@@ -1,0 +1,221 @@
+version: '3.9'
+
+networks:
+  dataops-net:
+    driver: bridge
+
+volumes:
+  app-db-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+  backup-storage:
+
+services:
+
+  # ── BASE DE DATOS PRINCIPAL (Metadatos del sistema) ──────────
+  app-db:
+    image: postgres:16-alpine
+    container_name: dataops-app-db
+    environment:
+      POSTGRES_DB: dataops_meta
+      POSTGRES_USER: dataops_admin
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+    volumes:
+      - app-db-data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/01-init.sql
+    ports:
+      - "5432:5432"
+    networks: [dataops-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataops_admin -d dataops_meta"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── REDIS (Caché + JWT Blacklist) ─────────────────────────────
+  redis-cache:
+    image: redis:7-alpine
+    container_name: dataops-redis
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    ports:
+      - "6379:6379"
+    networks: [dataops-net]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
+  # ── POSTGRES TARGET (Motor objetivo principal) ────────────────
+  postgres-target:
+    image: postgres:16-alpine
+    container_name: dataops-postgres-target
+    environment:
+      POSTGRES_DB: target_db
+      POSTGRES_USER: target_admin
+      POSTGRES_PASSWORD: ${POSTGRES_TARGET_PASSWORD}
+    command: >
+      postgres
+        -c wal_level=replica
+        -c max_wal_senders=3
+        -c max_replication_slots=3
+        -c hot_standby=on
+        -c shared_preload_libraries=pg_stat_statements
+        -c pg_stat_statements.track=all
+    volumes:
+      - ./scripts/init-target-postgres.sql:/docker-entrypoint-initdb.d/01-target.sql
+    ports:
+      - "5433:5432"
+    networks: [dataops-net]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U target_admin -d target_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── POSTGRES REPLICA (Read replica simulada) ──────────────────
+  postgres-replica:
+    image: postgres:16-alpine
+    container_name: dataops-postgres-replica
+    user: postgres
+    environment:
+      POSTGRES_DB: target_db
+      POSTGRES_USER: target_admin
+      POSTGRES_PASSWORD: ${POSTGRES_TARGET_PASSWORD}
+      PGPASSWORD: ${POSTGRES_TARGET_PASSWORD}
+    entrypoint: >
+      bash -c "
+        until pg_basebackup -h postgres-target -D /var/lib/postgresql/data -U target_admin -vP --no-password 2>/dev/null; do
+          echo 'Waiting for primary...'
+          sleep 3
+        done &&
+        echo 'primary_conninfo = host=postgres-target port=5432 user=target_admin password=${POSTGRES_TARGET_PASSWORD}' >> /var/lib/postgresql/data/postgresql.conf &&
+        touch /var/lib/postgresql/data/standby.signal &&
+        postgres -D /var/lib/postgresql/data
+      "
+    depends_on:
+      postgres-target:
+        condition: service_healthy
+    ports:
+      - "5434:5432"
+    networks: [dataops-net]
+
+  # ── SQL SERVER TARGET (Motor objetivo secundario) ─────────────
+  mssql-target:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: dataops-mssql-target
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      MSSQL_PID: Developer
+    ports:
+      - "1433:1433"
+    networks: [dataops-net]
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P ${MSSQL_SA_PASSWORD} -Q 'SELECT 1' -No || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+
+  # ── BACKEND API ────────────────────────────────────────────────
+  backend-api:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      target: production
+    container_name: dataops-backend
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DB_HOST: app-db
+      DB_PORT: 5432
+      DB_NAME: dataops_meta
+      DB_USER: dataops_admin
+      DB_PASSWORD: ${DB_PASSWORD}
+      REDIS_HOST: redis-cache
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: 15m
+      REFRESH_TOKEN_SECRET: ${REFRESH_TOKEN_SECRET}
+      REFRESH_TOKEN_EXPIRES_IN: 7d
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY}
+      POSTGRES_TARGET_HOST: postgres-target
+      POSTGRES_TARGET_PORT: 5432
+      POSTGRES_TARGET_DB: target_db
+      POSTGRES_TARGET_USER: target_admin
+      POSTGRES_TARGET_PASSWORD: ${POSTGRES_TARGET_PASSWORD}
+      MSSQL_TARGET_HOST: mssql-target
+      MSSQL_TARGET_PORT: 1433
+      MSSQL_SA_PASSWORD: ${MSSQL_SA_PASSWORD}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-dataops-backups-dev}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AZURE_STORAGE_CONNECTION_STRING: ${AZURE_STORAGE_CONNECTION_STRING:-}
+      BACKUP_STORAGE_PATH: /backups
+    volumes:
+      - backup-storage:/backups
+    ports:
+      - "3000:3000"
+    depends_on:
+      app-db:
+        condition: service_healthy
+      redis-cache:
+        condition: service_healthy
+    networks: [dataops-net]
+    restart: unless-stopped
+
+  # ── FRONTEND APP ───────────────────────────────────────────────
+  frontend-app:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:3000
+        VITE_WS_URL: ws://localhost:3000
+    container_name: dataops-frontend
+    ports:
+      - "80:80"
+    depends_on: [backend-api]
+    networks: [dataops-net]
+    restart: unless-stopped
+
+  # ── PROMETHEUS ─────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: dataops-prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+      - '--web.console.templates=/usr/share/prometheus/consoles'
+      - '--web.enable-lifecycle'
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml
+      - prometheus-data:/prometheus
+    ports:
+      - "9090:9090"
+    networks: [dataops-net]
+
+  # ── GRAFANA ────────────────────────────────────────────────────
+  grafana:
+    build:
+      context: ./grafana
+      dockerfile: Dockerfile
+    container_name: dataops-grafana
+    environment:
+      GF_SECURITY_ADMIN_USER: admin
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_PASSWORD}
+      GF_INSTALL_PLUGINS: grafana-clock-panel
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning
+      - grafana-data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on: [prometheus]
+    networks: [dataops-net]

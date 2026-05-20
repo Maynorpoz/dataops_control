@@ -1,0 +1,38 @@
+groups:
+  - name: dataops_alerts
+    rules:
+      - alert: HighCPU
+        expr: dataops_db_cpu_percent > 85
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on {{ $labels.db_name }}"
+          description: "CPU > 85% for 1 minute"
+
+      - alert: DeadlockDetected
+        expr: dataops_db_deadlocks_total > 3
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Deadlocks on {{ $labels.db_name }}"
+          description: "Deadlock count exceeded threshold"
+
+      - alert: HighReplicationLag
+        expr: dataops_replication_lag_seconds > 10
+        for: 1m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High replication lag"
+          description: "Replication lag > 10s"
+
+      - alert: BackupFailures
+        expr: increase(dataops_backup_failure_total[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Backup failures detected"
+          description: "One or more backups failed in the last hour"

@@ -1,0 +1,103 @@
+{
+  "title": "DataOps Control Center — Overview",
+  "uid": "dataops-overview",
+  "schemaVersion": 36,
+  "version": 1,
+  "refresh": "15s",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "CPU % por base de datos",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "dataops_db_cpu_percent",
+        "legendFormat": "{{db_name}} ({{engine}})"
+      }],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" }
+      }
+    },
+    {
+      "id": 2,
+      "type": "timeseries",
+      "title": "RAM % por base de datos",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "dataops_db_memory_percent",
+        "legendFormat": "{{db_name}}"
+      }],
+      "fieldConfig": {
+        "defaults": { "color": { "mode": "palette-classic" }, "unit": "percent" }
+      }
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "Conexiones activas",
+      "gridPos": { "x": 0, "y": 8, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "dataops_db_active_connections",
+        "legendFormat": "{{db_name}}"
+      }]
+    },
+    {
+      "id": 4,
+      "type": "timeseries",
+      "title": "Lag de replicación (segundos)",
+      "gridPos": { "x": 12, "y": 8, "w": 12, "h": 8 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "dataops_replication_lag_seconds",
+        "legendFormat": "Replica lag"
+      }],
+      "fieldConfig": {
+        "defaults": { "unit": "s", "thresholds": {
+          "mode": "absolute",
+          "steps": [
+            { "color": "green", "value": null },
+            { "color": "yellow", "value": 5 },
+            { "color": "red", "value": 15 }
+          ]
+        }}
+      }
+    },
+    {
+      "id": 5,
+      "type": "stat",
+      "title": "Total backups exitosos",
+      "gridPos": { "x": 0, "y": 16, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "sum(dataops_backup_success_total)"
+      }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "green" } } }
+    },
+    {
+      "id": 6,
+      "type": "stat",
+      "title": "Total backups fallidos",
+      "gridPos": { "x": 6, "y": 16, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "sum(dataops_backup_failure_total)"
+      }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "red" } } }
+    },
+    {
+      "id": 7,
+      "type": "stat",
+      "title": "Alertas disparadas",
+      "gridPos": { "x": 12, "y": 16, "w": 6, "h": 4 },
+      "targets": [{
+        "datasource": "Prometheus",
+        "expr": "sum(dataops_alerts_fired_total)"
+      }],
+      "fieldConfig": { "defaults": { "color": { "mode": "fixed", "fixedColor": "orange" } } }
+    }
+  ],
+  "time": { "from": "now-1h", "to": "now" }
+}
