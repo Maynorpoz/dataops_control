@@ -3,6 +3,8 @@ import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import cookieParser from 'cookie-parser';
+import swaggerUi from 'swagger-ui-express';
+import { swaggerSpec } from './infrastructure/swagger/swaggerSpec';
 
 import { apiRateLimiter } from './api/middlewares/rateLimiter';
 import { errorHandler } from './api/middlewares/errorHandler';
@@ -49,6 +51,12 @@ export function createApp() {
   app.use('/api/replication', replicationRoutes);
   app.use('/api/alerts',      alertsRoutes);
   app.use('/health',          healthRoutes);
+
+  // Swagger UI — sin autenticación
+  app.use('/api/docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+    customSiteTitle: 'DataOps API Docs',
+    swaggerOptions: { persistAuthorization: true },
+  }));
 
   // Prometheus metrics endpoint — no auth
   app.get('/metrics', async (req, res) => {
