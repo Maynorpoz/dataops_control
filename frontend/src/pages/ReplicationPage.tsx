@@ -44,7 +44,7 @@ export function ReplicationPage() {
     lag: parseFloat(String(r.lag_seconds)),
   }));
 
-  const hcfg = status ? HEALTH_CFG[status.health_status] : HEALTH_CFG.HEALTHY;
+  const hcfg = (status && HEALTH_CFG[status.health_status]) ?? HEALTH_CFG.HEALTHY;
   const HealthIcon = hcfg.icon;
 
   return (
