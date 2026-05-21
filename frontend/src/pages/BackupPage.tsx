@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Archive, Save, GitCommit, GitMerge, Cloud, CloudUpload, Download, Tag, ShieldCheck, Target, RefreshCw, Skull } from 'lucide-react';
+import { Archive, Save, GitCommit, GitMerge, Cloud, Download, Tag, ShieldCheck, Target, RefreshCw, Skull } from 'lucide-react';
 import { backupService } from '../services/backupService';
 import { connectionsService } from '../services/connectionsService';
 import { BackupHistory, BackupStatus, Connection } from '../types';

@@ -23,8 +23,15 @@ export function createApp() {
   const app = express();
 
   app.use(helmet());
+  const allowedOrigins = process.env.FRONTEND_URL
+    ? [process.env.FRONTEND_URL]
+    : ['http://localhost', 'http://localhost:80'];
+
   app.use(cors({
-    origin: process.env.FRONTEND_URL || 'http://localhost:80',
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      callback(new Error(`CORS blocked: ${origin}`));
+    },
     credentials: true,
   }));
   app.use(compression());

@@ -1,11 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { KeyRound, Eye, EyeOff, LogIn, Boxes } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Spinner } from '../components/ui/Spinner';
 
 export function LoginPage() {
-  const { login } = useAuth();
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -13,13 +13,16 @@ export function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  useEffect(() => {
+    if (user) navigate('/dashboard', { replace: true });
+  }, [user, navigate]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
     try {
       await login(username, password);
-      navigate('/dashboard');
     } catch {
       setError('Credenciales inválidas. Intente de nuevo.');
     } finally {

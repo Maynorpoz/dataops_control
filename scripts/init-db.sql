@@ -6,16 +6,45 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- ─── ENUMS ──────────────────────────────────────────────────
-CREATE TYPE engine_type AS ENUM ('PostgreSQL', 'SQLServer', 'Oracle');
-CREATE TYPE conn_status AS ENUM ('ACTIVE', 'INACTIVE', 'ERROR');
-CREATE TYPE health_status AS ENUM ('HEALTHY', 'WARNING', 'CRITICAL');
-CREATE TYPE backup_type AS ENUM ('FULL', 'DIFF', 'INC', 'SNAPSHOT');
-CREATE TYPE backup_status AS ENUM ('PENDING', 'RUNNING', 'SUCCESS', 'FAILED');
-CREATE TYPE alert_severity AS ENUM ('INFO', 'WARNING', 'CRITICAL');
-CREATE TYPE alert_status AS ENUM ('OPEN', 'ACKNOWLEDGED', 'RESOLVED');
-CREATE TYPE query_class AS ENUM ('FAST', 'MEDIUM', 'SLOW', 'CRITICAL');
-CREATE TYPE lock_type AS ENUM ('SHARED', 'EXCLUSIVE', 'DEADLOCK', 'TIMEOUT');
-CREATE TYPE snapshot_label AS ENUM ('PRE_DEPLOY', 'PRE_TEST', 'PRE_IMPORT');
+DO $$ BEGIN
+  CREATE TYPE engine_type AS ENUM ('PostgreSQL', 'SQLServer', 'Oracle');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE conn_status AS ENUM ('ACTIVE', 'INACTIVE', 'ERROR');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE health_status AS ENUM ('HEALTHY', 'WARNING', 'CRITICAL');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE backup_type AS ENUM ('FULL', 'DIFF', 'INC', 'SNAPSHOT');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE backup_status AS ENUM ('PENDING', 'RUNNING', 'SUCCESS', 'FAILED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE alert_severity AS ENUM ('INFO', 'WARNING', 'CRITICAL');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE alert_status AS ENUM ('OPEN', 'ACKNOWLEDGED', 'RESOLVED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE query_class AS ENUM ('FAST', 'MEDIUM', 'SLOW', 'CRITICAL');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE lock_type AS ENUM ('SHARED', 'EXCLUSIVE', 'DEADLOCK', 'TIMEOUT');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+  CREATE TYPE snapshot_label AS ENUM ('PRE_DEPLOY', 'PRE_TEST', 'PRE_IMPORT');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
 -- ─── USERS ──────────────────────────────────────────────────
 CREATE TABLE users (
@@ -157,9 +186,10 @@ CREATE TABLE alert_rules (
 );
 
 -- ─── SEED: USUARIOS ─────────────────────────────────────────
--- Password: admin123 (bcrypt hash)
+-- Password: admin123 (generado con pgcrypto bcrypt cost 12)
 INSERT INTO users (username, email, password_hash, role) VALUES
-('admin', 'admin@dataops.local', '$2b$12$LQv3c1yqBWVHxkd0LHAkCOYz6TtxMQJqhN8/LewdBPj4oDeOqSv1e', 'admin');
+('admin', 'admin@dataops.local', crypt('admin123', gen_salt('bf', 12)), 'admin')
+ON CONFLICT (username) DO NOTHING;
 
 -- ─── SEED: REGLAS DE ALERTA ─────────────────────────────────
 INSERT INTO alert_rules (rule_name, metric, operator, threshold, severity, action) VALUES

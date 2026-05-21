@@ -9,7 +9,7 @@ export class RefreshTokenUseCase {
     const accessToken = jwt.sign(
       { id: decoded.id, username: decoded.username, role: decoded.role },
       process.env.JWT_SECRET!,
-      { expiresIn: process.env.JWT_EXPIRES_IN || '15m' }
+      { expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any }
     );
 
     return { accessToken };

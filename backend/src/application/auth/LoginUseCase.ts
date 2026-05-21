@@ -19,11 +19,11 @@ export class LoginUseCase {
     const payload = { id: user.id, username: user.username, role: user.role };
 
     const accessToken = jwt.sign(payload, process.env.JWT_SECRET!, {
-      expiresIn: process.env.JWT_EXPIRES_IN || '15m',
+      expiresIn: (process.env.JWT_EXPIRES_IN || '15m') as any,
     });
 
     const refreshToken = jwt.sign(payload, process.env.REFRESH_TOKEN_SECRET!, {
-      expiresIn: process.env.REFRESH_TOKEN_EXPIRES_IN || '7d',
+      expiresIn: (process.env.REFRESH_TOKEN_EXPIRES_IN || '7d') as any,
     });
 
     return {
