@@ -18,7 +18,7 @@ export interface SlowQuery {
 
 export interface IDatabaseEngine {
   readonly engineType: 'PostgreSQL' | 'SQLServer' | 'Oracle';
-  testConnection(): Promise<boolean>;
+  testConnection(): Promise<{ ok: boolean; error?: string }>;
   collectTelemetry(): Promise<TelemetryData>;
   getSlowQueries(thresholdMs: number): Promise<SlowQuery[]>;
   executeQuery(sql: string): Promise<any[]>;

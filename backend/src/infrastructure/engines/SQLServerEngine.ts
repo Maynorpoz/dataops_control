@@ -25,13 +25,13 @@ export class SQLServerEngine implements IDatabaseEngine {
     return this.pool;
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
       const pool = await this.getPool();
       await pool.request().query('SELECT 1 AS test');
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? String(err) };
     }
   }
 

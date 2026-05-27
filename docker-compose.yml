@@ -6,6 +6,7 @@ networks:
 
 volumes:
   app-db-data:
+  target-db-data:
   redis-data:
   prometheus-data:
   grafana-data:
@@ -66,9 +67,11 @@ services:
         -c shared_preload_libraries=pg_stat_statements
         -c pg_stat_statements.track=all
     volumes:
+      - target-db-data:/var/lib/postgresql/data
       - ./scripts/init-target-postgres.sql:/docker-entrypoint-initdb.d/01-target.sql
+      - ./scripts/init-target-hba.sh:/docker-entrypoint-initdb.d/02-hba.sh
     ports:
-      - "5433:5432"
+      - "5436:5432"
     networks: [dataops-net]
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U target_admin -d target_db"]
@@ -86,16 +89,9 @@ services:
       POSTGRES_USER: target_admin
       POSTGRES_PASSWORD: ${POSTGRES_TARGET_PASSWORD}
       PGPASSWORD: ${POSTGRES_TARGET_PASSWORD}
-    entrypoint: >
-      bash -c "
-        until pg_basebackup -h postgres-target -D /var/lib/postgresql/data -U target_admin -vP --no-password 2>/dev/null; do
-          echo 'Waiting for primary...'
-          sleep 3
-        done &&
-        echo 'primary_conninfo = host=postgres-target port=5432 user=target_admin password=${POSTGRES_TARGET_PASSWORD}' >> /var/lib/postgresql/data/postgresql.conf &&
-        touch /var/lib/postgresql/data/standby.signal &&
-        postgres -D /var/lib/postgresql/data
-      "
+    entrypoint: ["/bin/bash", "/scripts/init-replica.sh"]
+    volumes:
+      - ./scripts/init-replica.sh:/scripts/init-replica.sh
     depends_on:
       postgres-target:
         condition: service_healthy

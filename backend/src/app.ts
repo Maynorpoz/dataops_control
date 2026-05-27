@@ -26,9 +26,9 @@ export function createApp() {
 
   app.use(helmet());
   const allowedOrigins = process.env.FRONTEND_URL
-    ? [process.env.FRONTEND_URL]
-    : ['http://localhost', 'http://localhost:80'];
-
+    ? [process.env.FRONTEND_URL, 'http://localhost:3000']
+    : ['http://localhost', 'http://localhost:80', 'http://localhost:3000'];
+    
   app.use(cors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) return callback(null, true);

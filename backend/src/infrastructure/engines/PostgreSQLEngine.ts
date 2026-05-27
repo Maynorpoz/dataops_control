@@ -9,14 +9,14 @@ export class PostgreSQLEngine implements IDatabaseEngine {
     this.pool = new Pool({ ...config, max: 5, connectionTimeoutMillis: 5000 });
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     try {
       const client = await this.pool.connect();
       await client.query('SELECT 1');
       client.release();
-      return true;
-    } catch {
-      return false;
+      return { ok: true };
+    } catch (err: any) {
+      return { ok: false, error: err?.message ?? String(err) };
     }
   }
 

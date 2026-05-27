@@ -10,9 +10,9 @@ export class OracleEngine implements IDatabaseEngine {
     this.config = config;
   }
 
-  async testConnection(): Promise<boolean> {
+  async testConnection(): Promise<{ ok: boolean; error?: string }> {
     console.log(`[OracleEngine] Simulated connection test to ${this.config.host}`);
-    return true;
+    return { ok: true };
   }
 
   async collectTelemetry(): Promise<TelemetryData> {
