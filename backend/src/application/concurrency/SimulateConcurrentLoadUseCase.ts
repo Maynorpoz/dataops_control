@@ -96,7 +96,7 @@ export class SimulateConcurrentLoadUseCase {
 
       await query(
         `INSERT INTO tx_log (db_id, session_id, operacion, inicio, fin, wait_time, resolved)
-         VALUES ($1,$2,$3,$4,NOW(),$5,TRUE)`,
+         VALUES ($1,$2,$3,$4,NOW(),$5,FALSE)`,
         [dbId, sessionId, op, new Date(start), Date.now() - start]
       );
     } catch (err: any) {
@@ -105,8 +105,8 @@ export class SimulateConcurrentLoadUseCase {
 
       await query(
         `INSERT INTO tx_log (db_id, session_id, operacion, inicio, fin, wait_time, lock_type, resolved)
-         VALUES ($1,$2,'INSERT',$3,NOW(),$4,$5,TRUE)`,
-        [dbId, sessionId, new Date(start), Date.now() - start, isDeadlock ? 'DEADLOCK' : 'TIMEOUT']
+         VALUES ($1,$2,'INSERT',$3,NOW(),$4,$5,$6)`,
+        [dbId, sessionId, new Date(start), Date.now() - start, isDeadlock ? 'DEADLOCK' : 'TIMEOUT', isDeadlock]
       ).catch(() => {});
     } finally {
       client.release();
