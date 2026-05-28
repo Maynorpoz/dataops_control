@@ -12,5 +12,6 @@ router.get('/rules',               ctrl.getRules);
 router.put('/rules',               ctrl.updateRules);
 router.put('/:id/acknowledge',     ctrl.acknowledge);
 router.put('/:id/resolve',         ctrl.resolve);
+router.post('/test-email',         ctrl.testEmail);
 
 export default router;

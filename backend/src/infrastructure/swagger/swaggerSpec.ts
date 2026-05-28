@@ -631,6 +631,27 @@ const options: swaggerJsdoc.Options = {
           responses: { 200: { description: 'Alerta resuelta' } },
         },
       },
+      '/api/alerts/test-email': {
+        post: {
+          tags: ['Alerts'],
+          summary: 'Enviar correo de prueba para verificar configuración SMTP',
+          security: [{ bearerAuth: [] }],
+          responses: {
+            200: {
+              description: 'Correo enviado correctamente',
+              content: {
+                'application/json': {
+                  schema: {
+                    type: 'object',
+                    properties: { message: { type: 'string', example: 'Correo de prueba enviado correctamente.' } },
+                  },
+                },
+              },
+            },
+            500: { description: 'Error de configuración SMTP' },
+          },
+        },
+      },
       // ── HEALTH ──────────────────────────────────────────────────
       '/health': {
         get: {

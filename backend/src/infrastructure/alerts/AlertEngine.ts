@@ -79,8 +79,8 @@ AlertEngine.on('alert', async (alert: Partial<AlertLog>) => {
 
 AlertEngine.on('alert', async (alert: Partial<AlertLog>) => {
   try {
-    const { EmailSimulator } = await import('./EmailSimulator');
-    await EmailSimulator.send(alert);
+    const { EmailService } = await import('./EmailService');
+    await EmailService.send(alert);
   } catch {}
 });
 

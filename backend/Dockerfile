@@ -1,8 +1,19 @@
 FROM node:20-slim AS base
 WORKDIR /app
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    postgresql-client \
-    bash \
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends \
+       bash \
+       gnupg2 \
+       ca-certificates \
+       wget \
+    && wget -qO /tmp/pgdg.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && gpg --dearmor < /tmp/pgdg.asc > /usr/share/keyrings/pgdg.gpg \
+    && rm /tmp/pgdg.asc \
+    && echo "deb [signed-by=/usr/share/keyrings/pgdg.gpg] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" \
+       > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends postgresql-client-16 \
     && rm -rf /var/lib/apt/lists/*
 
 FROM base AS deps

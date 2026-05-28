@@ -4,6 +4,7 @@ import { UpdateAlertThresholdsUseCase } from '../../application/alerts/UpdateAle
 import { AlertRulesConfig } from '../../infrastructure/alerts/AlertRulesConfig';
 import { query } from '../../infrastructure/database/PostgresConnection';
 import { RedisService } from '../../infrastructure/cache/RedisService';
+import { EmailService } from '../../infrastructure/alerts/EmailService';
 
 const updateThresholds = new UpdateAlertThresholdsUseCase();
 
@@ -58,6 +59,19 @@ export class AlertsController {
     try {
       await updateThresholds.execute(req.body);
       res.json({ message: 'Rules updated and reloaded in hot' });
+    } catch (err) { next(err); }
+  };
+
+  testEmail = async (_req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      await EmailService.send({
+        severity: 'WARNING',
+        rule_name: 'TEST_EMAIL',
+        message: 'Correo de prueba desde DataOps Control Center — configuración SMTP verificada.',
+        condition_value: 87.5,
+        threshold_value: 85,
+      });
+      res.json({ message: 'Correo de prueba enviado correctamente.' });
     } catch (err) { next(err); }
   };
 }
