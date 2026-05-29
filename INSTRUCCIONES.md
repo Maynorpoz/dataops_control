@@ -1,4 +1,3 @@
-# 🚀 PROMPT MAESTRO — CLAUDE CODE
 ## DataOps Control Center — Plataforma Empresarial de Monitoreo de Bases de Datos
 
 ---
