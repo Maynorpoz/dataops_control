@@ -18,7 +18,8 @@ export class CreateSnapshotUseCase {
 
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
     const storagePath = process.env.BACKUP_STORAGE_PATH || '/backups';
-    const filePath = `${storagePath}/${conn.nombre}_SNAPSHOT_${label}_${timestamp}.pgdump`;
+    const safeName = conn.nombre.replace(/\s+/g, '_');
+    const filePath = `${storagePath}/${safeName}_SNAPSHOT_${label}_${timestamp}.pgdump`;
 
     const [pending] = await query<BackupHistory>(
       `INSERT INTO backup_history (db_id, backup_type, snapshot_label, status, restore_point)
@@ -30,7 +31,7 @@ export class CreateSnapshotUseCase {
     try {
       const password = AES256Service.decrypt(conn.encrypted_password);
       await execAsync(
-        `pg_dump -h ${conn.host} -p ${conn.port} -U ${conn.user_name} -d ${conn.database_name} -F c -f ${filePath}`,
+        `pg_dump -h ${conn.host} -p ${conn.port} -U ${conn.user_name} -d ${conn.database_name} -F c -f "${filePath}"`,
         { env: { ...process.env, PGPASSWORD: password } }
       );
 

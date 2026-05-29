@@ -78,7 +78,12 @@ export function MetricsPage() {
                 <HardDrive size={20} className="text-amber-400 shrink-0" />
                 <div>
                   <p className="text-xl font-bold font-display text-text-primary">{latest.disk_usage} MB</p>
-                  <p className="text-xs text-text-muted font-body">Uso de disco</p>
+                  <p className="text-xs text-text-muted font-body">
+                    Uso de disco
+                    {latest.disk_total
+                      ? <span className="ml-1 text-text-muted/60">/ {latest.disk_total} MB</span>
+                      : null}
+                  </p>
                 </div>
               </Card>
             </div>
@@ -97,9 +102,11 @@ export function MetricsPage() {
                 <MetricGauge value={parseFloat(String(latest.cpu))} label="CPU"   icon={<Cpu size={12} />} />
                 <MetricGauge value={parseFloat(String(latest.memory))} label="RAM" icon={<MemoryStick size={12} />} />
                 <MetricGauge
-                  value={Math.round((parseFloat(String(latest.disk_usage)) / parseFloat(String(latest.disk_total))) * 100)}
+                  value={parseFloat(String(latest.disk_usage))}
+                  max={parseFloat(String(latest.disk_total)) || 10240}
                   label="Disco"
                   icon={<HardDrive size={12} />}
+                  unit="MB"
                 />
               </Card>
             )}

@@ -1,11 +1,35 @@
-import { useState, useEffect } from 'react';
-import { Plus, Pencil, Trash2, Wifi, WifiOff, CheckCircle2, AlertTriangle, XCircle, Database, Server, Cylinder, RefreshCw } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Plus, Pencil, Trash2, Wifi, CheckCircle2, AlertTriangle, XCircle, Database, Server, Cylinder, RefreshCw, X } from 'lucide-react';
 import { connectionsService } from '../services/connectionsService';
 import { Connection, HealthStatus, EngineType } from '../types';
 import { Card } from '../components/ui/Card';
 import { Modal } from '../components/ui/Modal';
 import { Badge } from '../components/ui/Badge';
 import { Spinner } from '../components/ui/Spinner';
+
+type Toast = { id: number; message: string; type: 'success' | 'error' };
+
+function ToastContainer({ toasts, onDismiss }: { toasts: Toast[]; onDismiss: (id: number) => void }) {
+  return (
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2">
+      {toasts.map((t) => (
+        <div key={t.id}
+          className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg font-body text-sm min-w-[260px] animate-fade-in
+            ${t.type === 'success'
+              ? 'bg-bg-elevated border-accent-cyan/40 text-text-primary'
+              : 'bg-bg-elevated border-red-500/40 text-text-primary'}`}>
+          {t.type === 'success'
+            ? <CheckCircle2 size={16} className="text-accent-cyan shrink-0" />
+            : <XCircle size={16} className="text-red-400 shrink-0" />}
+          <span className="flex-1">{t.message}</span>
+          <button onClick={() => onDismiss(t.id)} className="text-text-muted hover:text-text-primary transition-colors">
+            <X size={13} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+}
 
 const HEALTH_BADGE: Record<HealthStatus, any> = {
   HEALTHY:  { v: 'success',  icon: CheckCircle2,  label: 'Saludable' },
@@ -28,6 +52,15 @@ export function ConnectionsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editConn, setEditConn] = useState<Connection | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+  const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
+  const [activeId, setActiveId] = useState<number | null>(null);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -56,23 +89,41 @@ export function ConnectionsPage() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('¿Eliminar esta conexión?')) return;
-    await connectionsService.delete(id);
+    setConfirmDeleteId(id);
+  };
+
+  const confirmDelete = async () => {
+    if (!confirmDeleteId) return;
+    await connectionsService.delete(confirmDeleteId);
+    setConfirmDeleteId(null);
+    showToast('Conexión eliminada', 'error');
     load();
   };
 
   const handleTest = async (id: number) => {
     setTestingId(id);
+    const conn = connections.find((c) => c.id === id);
+    const connName = conn ? `${conn.nombre} (${conn.motor})` : `Conexión #${id}`;
     try {
       const res = await connectionsService.test(id);
-      alert(`Conexión ${res.data.success ? '✓ exitosa' : '✗ fallida'} — ${res.data.latencyMs}ms`);
+      if (res.data.success) {
+        setActiveId(id);
+        showToast(`${connName} — conectada exitosamente en ${res.data.latencyMs}ms`, 'success');
+      } else {
+        setActiveId(null);
+        showToast(`${connName} — conexión fallida. Verifica los datos de acceso`, 'error');
+      }
       load();
+    } catch (err: any) {
+      showToast(`${connName} — ${err.response?.data?.error || err.message}`, 'error');
     } finally {
       setTestingId(null);
     }
   };
 
   return (
+    <>
+    <ToastContainer toasts={toasts} onDismiss={(id) => setToasts((p) => p.filter((t) => t.id !== id))} />
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <h1 className="font-display text-lg font-bold text-text-primary flex items-center gap-2">
@@ -93,25 +144,68 @@ export function ConnectionsPage() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {connections.map((conn) => {
-            const hb = HEALTH_BADGE[conn.health_status || 'HEALTHY'];
-            const HealthIcon = hb.icon;
-            const EngineIcon = ENGINE_ICONS[conn.motor];
+            const hb         = HEALTH_BADGE[conn.health_status || 'HEALTHY'];
+            const HealthIcon  = hb.icon;
+            const EngineIcon  = ENGINE_ICONS[conn.motor];
+            const isActive    = activeId === conn.id;
+            const isCritical  = conn.health_status === 'CRITICAL' || conn.status === 'ERROR';
+            const isWarning   = conn.health_status === 'WARNING';
+
+            const cardBorder = isActive
+              ? 'border-emerald-500/60 shadow-emerald-500/15 shadow-lg'
+              : isCritical
+              ? 'border-red-500/40'
+              : isWarning
+              ? 'border-amber-400/40'
+              : 'border-bg-border';
+
             return (
-              <Card key={conn.id} glass className="space-y-3">
+              <Card key={conn.id} glass className={`space-y-3 border ${cardBorder}`}>
+                {/* Header */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <EngineIcon size={16} className="text-accent-cyan" />
+                    <EngineIcon size={16} className={isActive ? 'text-emerald-400' : isCritical ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-accent-cyan'} />
                     <span className="font-display text-sm font-semibold text-text-primary">{conn.nombre}</span>
                   </div>
                   <Badge variant={hb.v as any}>
                     <HealthIcon size={10} /> {hb.label}
                   </Badge>
                 </div>
+
+                {/* Connection info */}
                 <div className="text-xs text-text-muted font-body space-y-1">
                   <div>{conn.motor} · {conn.host}:{conn.port}/{conn.database_name}</div>
                   <div>Usuario: <span className="text-text-secondary">{conn.user_name}</span></div>
                 </div>
-                <div className="flex gap-2 pt-1">
+
+                {/* Status indicator */}
+                <div className={`flex items-center gap-2 py-1.5 px-2.5 rounded-lg border ${
+                  isActive
+                    ? 'bg-emerald-500/10 border-emerald-500/30'
+                    : 'bg-bg-base border-bg-border'
+                }`}>
+                  <span className="relative flex h-2.5 w-2.5 shrink-0">
+                    {isActive && (
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-60" />
+                    )}
+                    <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
+                      isActive ? 'bg-emerald-400' : isCritical ? 'bg-red-400' : isWarning ? 'bg-amber-400' : 'bg-text-muted/40'
+                    }`} />
+                  </span>
+                  <span className={`text-[11px] font-display font-semibold ${
+                    isActive ? 'text-emerald-400' : isCritical ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-text-muted'
+                  }`}>
+                    {isActive ? 'En línea — Activa' : isCritical ? 'Sin conexión' : isWarning ? 'Degradada' : 'Disponible'}
+                  </span>
+                  {isActive && conn.last_checked_at && (
+                    <span className="ml-auto text-[10px] text-text-muted font-body">
+                      {new Date(conn.last_checked_at).toLocaleTimeString()}
+                    </span>
+                  )}
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-2">
                   <button onClick={() => handleTest(conn.id)} disabled={testingId === conn.id}
                     className="flex items-center gap-1 px-2.5 py-1 rounded text-[11px] border border-accent-cyan/30 text-accent-cyan hover:bg-accent-cyan/10 transition-colors font-display disabled:opacity-50">
                     {testingId === conn.id ? <Spinner size={11} /> : <Wifi size={11} />} Test
@@ -171,6 +265,26 @@ export function ConnectionsPage() {
           </div>
         </div>
       </Modal>
+
+      {/* Modal confirmación de eliminación */}
+      <Modal open={confirmDeleteId !== null} onClose={() => setConfirmDeleteId(null)} title="Eliminar conexión">
+        <div className="space-y-4">
+          <p className="text-sm font-body text-text-secondary">
+            ¿Estás seguro de que deseas eliminar esta conexión? Esta acción no se puede deshacer.
+          </p>
+          <div className="flex justify-end gap-2">
+            <button onClick={() => setConfirmDeleteId(null)}
+              className="px-4 py-2 rounded-lg text-sm text-text-muted border border-bg-border hover:border-bg-elevated transition-colors font-display">
+              Cancelar
+            </button>
+            <button onClick={confirmDelete}
+              className="px-4 py-2 rounded-lg text-sm bg-red-500/20 text-red-400 border border-red-500/30 hover:bg-red-500/30 transition-colors font-display">
+              Eliminar
+            </button>
+          </div>
+        </div>
+      </Modal>
     </div>
+    </>
   );
 }

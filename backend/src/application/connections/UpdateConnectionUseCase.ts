@@ -1,6 +1,7 @@
 import { query } from '../../infrastructure/database/PostgresConnection';
 import { AES256Service } from '../../infrastructure/crypto/AES256Service';
 import { RedisService } from '../../infrastructure/cache/RedisService';
+import { EngineFactory } from '../../infrastructure/engines/EngineFactory';
 import { Connection } from '../../domain/entities/Connection';
 
 export class UpdateConnectionUseCase {
@@ -28,6 +29,8 @@ export class UpdateConnectionUseCase {
       values
     );
 
+    // Evict cached pool so next call reconnects with updated credentials
+    EngineFactory.evict(id);
     await RedisService.invalidatePattern('cache:connections:*');
     return rows[0];
   }

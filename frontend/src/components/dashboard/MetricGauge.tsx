@@ -5,27 +5,38 @@ interface MetricGaugeProps {
   value: number;
   label: string;
   icon: React.ReactNode;
+  max?: number;   // when provided, value/max determines the fill instead of value%
+  unit?: string;  // label shown inside the gauge ("MB", "GB", etc.)
 }
 
-function getColor(value: number): string {
-  if (value > 85) return '#ef4444';
-  if (value > 70) return '#f59e0b';
+function getColor(pct: number): string {
+  if (pct > 85) return '#ef4444';
+  if (pct > 70) return '#f59e0b';
   return '#10b981';
 }
 
-export function MetricGauge({ value, label, icon }: MetricGaugeProps) {
-  const color = getColor(value);
+export function MetricGauge({ value, label, icon, max, unit }: MetricGaugeProps) {
+  const pct   = max ? Math.min((value / max) * 100, 100) : Math.min(value, 100);
+  const color = getColor(pct);
+
+  // Text shown inside the gauge
+  const displayText = unit
+    ? value >= 1024
+      ? `${(value / 1024).toFixed(1)}G`
+      : `${Math.round(value)}M`
+    : `${Math.round(pct)}%`;
+
   return (
     <div className="flex flex-col items-center gap-2">
       <div className="w-20 h-20">
         <CircularProgressbar
-          value={value}
-          text={`${Math.round(value)}%`}
+          value={pct}
+          text={displayText}
           styles={buildStyles({
-            textColor: color,
-            pathColor: color,
+            textColor:  color,
+            pathColor:  color,
             trailColor: '#1e2d4a',
-            textSize: '22px',
+            textSize:   '20px',
           })}
         />
       </div>

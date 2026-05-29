@@ -1,9 +1,11 @@
 import { Response, NextFunction } from 'express';
 import { AuthRequest } from '../middlewares/authMiddleware';
 import { SimulateConcurrentLoadUseCase } from '../../application/concurrency/SimulateConcurrentLoadUseCase';
+import { ForceDeadlockUseCase } from '../../application/concurrency/ForceDeadlockUseCase';
 import { query } from '../../infrastructure/database/PostgresConnection';
 
-const simulate = new SimulateConcurrentLoadUseCase();
+const simulate    = new SimulateConcurrentLoadUseCase();
+const forceDeadlock = new ForceDeadlockUseCase();
 
 export class ConcurrencyController {
   runSimulation = async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -35,6 +37,15 @@ export class ConcurrencyController {
         FROM tx_log
       `);
       res.json(rows[0]);
+    } catch (err) { next(err); }
+  };
+
+  runForceDeadlock = async (req: AuthRequest, res: Response, next: NextFunction) => {
+    try {
+      const { connectionId } = req.body;
+      if (!connectionId) { res.status(400).json({ error: 'connectionId required' }); return; }
+      const result = await forceDeadlock.execute(parseInt(connectionId));
+      res.json(result);
     } catch (err) { next(err); }
   };
 }

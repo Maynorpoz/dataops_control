@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Archive, Save, GitCommit, GitMerge, Cloud, Download, Tag, ShieldCheck, Target, RefreshCw, Skull } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Archive, Save, GitCommit, GitMerge, Cloud, Download, Tag, ShieldCheck, Target, RefreshCw, Skull, CheckCircle2, XCircle, X } from 'lucide-react';
 import { backupService } from '../services/backupService';
 import { connectionsService } from '../services/connectionsService';
 import { BackupHistory, BackupStatus, Connection } from '../types';
@@ -16,6 +16,8 @@ const TYPE_ICONS: Record<string, any> = {
   FULL: Save, DIFF: GitCommit, INC: GitMerge, SNAPSHOT: Tag,
 };
 
+type Toast = { id: number; message: string; type: 'success' | 'error' };
+
 export function BackupPage() {
   const [history, setHistory] = useState<BackupHistory[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -23,6 +25,13 @@ export function BackupPage() {
   const [loading, setLoading] = useState(true);
   const [running, setRunning] = useState<string | null>(null);
   const [sla, setSla] = useState<any>(null);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = useCallback((message: string, type: 'success' | 'error') => {
+    const id = Date.now();
+    setToasts((prev) => [...prev, { id, message, type }]);
+    setTimeout(() => setToasts((prev) => prev.filter((t) => t.id !== id)), 4000);
+  }, []);
 
   const load = async () => {
     setLoading(true);
@@ -42,8 +51,8 @@ export function BackupPage() {
 
   const runAction = async (action: () => Promise<any>, label: string) => {
     setRunning(label);
-    try { await action(); await load(); }
-    catch (err: any) { alert(`Error: ${err.response?.data?.error || err.message}`); }
+    try { await action(); await load(); showToast(`${label} completado exitosamente`, 'success'); }
+    catch (err: any) { showToast(`Error: ${err.response?.data?.error || err.message}`, 'error'); }
     finally { setRunning(null); }
   };
 
@@ -80,6 +89,17 @@ export function BackupPage() {
   ];
 
   return (
+    <>
+    <div className="fixed bottom-5 right-5 z-50 flex flex-col gap-2">
+      {toasts.map((t) => (
+        <div key={t.id} className={`flex items-center gap-3 px-4 py-3 rounded-lg border shadow-lg font-body text-sm min-w-[260px]
+          ${t.type === 'success' ? 'bg-bg-elevated border-accent-cyan/40 text-text-primary' : 'bg-bg-elevated border-red-500/40 text-text-primary'}`}>
+          {t.type === 'success' ? <CheckCircle2 size={16} className="text-accent-cyan shrink-0" /> : <XCircle size={16} className="text-red-400 shrink-0" />}
+          <span className="flex-1">{t.message}</span>
+          <button onClick={() => setToasts((p) => p.filter((x) => x.id !== t.id))} className="text-text-muted hover:text-text-primary transition-colors"><X size={13} /></button>
+        </div>
+      ))}
+    </div>
     <div className="space-y-5">
       <div className="flex items-center justify-between flex-wrap gap-3">
         <h1 className="font-display text-lg font-bold text-text-primary flex items-center gap-2">
@@ -137,5 +157,6 @@ export function BackupPage() {
         <DataTable columns={columns} data={history} rowKey={(r) => String(r.id)} emptyMessage="No hay backups registrados." />
       )}
     </div>
+    </>
   );
 }

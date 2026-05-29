@@ -8,6 +8,10 @@ export class OracleEngine implements IDatabaseEngine {
   readonly engineType = 'Oracle' as const;
   private config: { host: string; port: number; database: string; user: string; password: string };
 
+  // Lazy-initialized pool — created once per engine instance, reused across all method calls
+  private pool: oracledb.Pool | null = null;
+  private poolInitializing = false;
+
   constructor(config: { host: string; port: number; database: string; user: string; password: string }) {
     this.config = config;
   }
@@ -16,12 +20,35 @@ export class OracleEngine implements IDatabaseEngine {
     return `${this.config.host}:${this.config.port}/${this.config.database}`;
   }
 
+  private async getPool(): Promise<oracledb.Pool> {
+    if (this.pool) return this.pool;
+
+    // Serialize initialization to avoid multiple pools from concurrent calls
+    if (this.poolInitializing) {
+      await new Promise((r) => setTimeout(r, 200));
+      return this.getPool();
+    }
+
+    this.poolInitializing = true;
+    try {
+      this.pool = await oracledb.createPool({
+        user:          this.config.user,
+        password:      this.config.password,
+        connectString: this.connectString,
+        poolMin:       1,
+        poolMax:       5,
+        poolIncrement: 1,
+        poolTimeout:   60,
+      });
+    } finally {
+      this.poolInitializing = false;
+    }
+    return this.pool;
+  }
+
   private async getConn(): Promise<oracledb.Connection> {
-    return oracledb.getConnection({
-      user: this.config.user,
-      password: this.config.password,
-      connectString: this.connectString,
-    });
+    const pool = await this.getPool();
+    return pool.getConnection();
   }
 
   async testConnection(): Promise<{ ok: boolean; error?: string }> {
@@ -53,10 +80,10 @@ export class OracleEngine implements IDatabaseEngine {
       );
 
       const activeConnections = Number(connResult.rows?.[0]?.[0] ?? 0);
-      const activeLocks      = Number(lockResult.rows?.[0]?.[0] ?? 0);
-      const diskUsageMB      = parseFloat(String(diskResult.rows?.[0]?.[0] ?? 0));
+      const activeLocks       = Number(lockResult.rows?.[0]?.[0] ?? 0);
+      const diskUsageMB       = parseFloat(String(diskResult.rows?.[0]?.[0] ?? 0));
 
-      // CPU/RAM no son accesibles vía SQL estándar en Oracle — se aproximan con carga real
+      // CPU/RAM not natively available via SQL in Oracle — approximated from load indicators
       const cpu    = Math.min(99, 10 + activeConnections * 0.5 + Math.random() * 8);
       const memory = Math.min(99, 40 + Math.random() * 15);
 
@@ -92,10 +119,10 @@ export class OracleEngine implements IDatabaseEngine {
       );
 
       return (result.rows ?? []).map((row: [string, number, number]) => ({
-        queryText:     String(row[0]),
-        durationMs:    Number(row[1]),
-        rowsReturned:  Number(row[2]) || 0,
-        indexUsed:     null,
+        queryText:    String(row[0]),
+        durationMs:   Number(row[1]),
+        rowsReturned: Number(row[2]) || 0,
+        indexUsed:    null,
         executionPlan: {},
       }));
     } catch {
@@ -120,7 +147,7 @@ export class OracleEngine implements IDatabaseEngine {
     let conn: oracledb.Connection | undefined;
     try {
       conn = await this.getConn();
-      // Oracle requiere formato SID,SERIAL# — el sessionId viene como "sid,serial"
+      // Oracle kill session format: SID,SERIAL#
       const [sid, serial] = sessionId.split(',');
       await conn.execute(
         `ALTER SYSTEM KILL SESSION '${parseInt(sid)},${parseInt(serial ?? '1')}' IMMEDIATE`
@@ -131,8 +158,14 @@ export class OracleEngine implements IDatabaseEngine {
   }
 
   async measureReplicationLag(): Promise<number> {
-    // Oracle Data Guard lag — requiere configuración de standby.
-    // Oracle Free no incluye Data Guard, retorna 0.
+    // Oracle Data Guard lag requires standby configuration not present in Oracle Free
     return 0;
+  }
+
+  async close(): Promise<void> {
+    if (this.pool) {
+      await this.pool.close(0).catch(() => {});
+      this.pool = null;
+    }
   }
 }

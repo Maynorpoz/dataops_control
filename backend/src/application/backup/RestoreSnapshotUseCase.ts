@@ -20,7 +20,7 @@ export class RestoreSnapshotUseCase {
     const startTime = Date.now();
     try {
       await execAsync(
-        `pg_restore -h ${conn.host} -p ${conn.port} -U ${conn.user_name} -d ${conn.database_name} --clean --no-owner -F c ${backup.file_path}`,
+        `pg_restore -h ${conn.host} -p ${conn.port} -U ${conn.user_name} -d ${conn.database_name} --clean --no-owner -F c "${backup.file_path}"`,
         { env: { ...process.env, PGPASSWORD: password } }
       );
 
