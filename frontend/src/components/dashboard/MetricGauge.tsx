@@ -16,14 +16,15 @@ function getColor(pct: number): string {
 }
 
 export function MetricGauge({ value, label, icon, max, unit }: MetricGaugeProps) {
-  const pct   = max ? Math.min((value / max) * 100, 100) : Math.min(value, 100);
+  const safeValue = isNaN(value) || value == null ? 0 : value;
+  const pct   = max ? Math.min((safeValue / max) * 100, 100) : Math.min(safeValue, 100);
   const color = getColor(pct);
 
   // Text shown inside the gauge
   const displayText = unit
-    ? value >= 1024
-      ? `${(value / 1024).toFixed(1)}G`
-      : `${Math.round(value)}M`
+    ? safeValue >= 1024
+      ? `${(safeValue / 1024).toFixed(1)}G`
+      : `${Math.round(safeValue)}M`
     : `${Math.round(pct)}%`;
 
   return (

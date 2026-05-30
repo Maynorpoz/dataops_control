@@ -111,7 +111,8 @@ export function ConnectionsPage() {
         showToast(`${connName} — conectada exitosamente en ${res.data.latencyMs}ms`, 'success');
       } else {
         setActiveId(null);
-        showToast(`${connName} — conexión fallida. Verifica los datos de acceso`, 'error');
+        const reason = res.data.error ? `: ${res.data.error}` : '. Verifica los datos de acceso';
+        showToast(`${connName} — conexión fallida${reason}`, 'error');
       }
       load();
     } catch (err: any) {
@@ -246,7 +247,11 @@ export function ConnectionsPage() {
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block text-xs font-display text-text-muted mb-1">Motor</label>
-              <select value={form.motor} onChange={(e) => setForm({ ...form, motor: e.target.value as EngineType })}
+              <select value={form.motor} onChange={(e) => {
+                const motor = e.target.value as EngineType;
+                const defaultPorts: Record<EngineType, number> = { PostgreSQL: 5432, SQLServer: 1433, Oracle: 1521 };
+                setForm({ ...form, motor, port: defaultPorts[motor] });
+              }}
                 className="w-full bg-bg-elevated border border-bg-border rounded-lg px-3 py-2 text-sm text-text-primary font-body focus:outline-none focus:border-accent-cyan/60">
                 <option>PostgreSQL</option>
                 <option>SQLServer</option>
@@ -255,7 +260,7 @@ export function ConnectionsPage() {
             </div>
             <div>
               <label className="block text-xs font-display text-text-muted mb-1">Puerto</label>
-              <input type="number" value={form.port} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) })}
+              <input type="number" value={form.port || ''} onChange={(e) => setForm({ ...form, port: parseInt(e.target.value) || 0 })}
                 className="w-full bg-bg-elevated border border-bg-border rounded-lg px-3 py-2 text-sm text-text-primary font-body focus:outline-none focus:border-accent-cyan/60" />
             </div>
           </div>

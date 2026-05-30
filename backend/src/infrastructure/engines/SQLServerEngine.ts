@@ -13,8 +13,9 @@ export class SQLServerEngine implements IDatabaseEngine {
       database: config.database,
       user: config.user,
       password: config.password,
-      options: { encrypt: false, trustServerCertificate: true },
+      options: { encrypt: true, trustServerCertificate: true, enableArithAbort: true },
       pool: { max: 5, min: 0, idleTimeoutMillis: 30000 },
+      connectionTimeout: 15000,
     };
   }
 

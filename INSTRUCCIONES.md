@@ -2,13 +2,13 @@
 
 ---
 
-## 🎯 ROL Y MISIÓN
+##  ROL Y MISIÓN
 
 Actúa como un **Arquitecto de Software Principal de Nivel Élite** e **Ingeniero DevOps Senior**. Tu misión es implementar el **DataOps Control Center** desde cero: una plataforma empresarial de nivel producción para monitoreo, gestión y recuperación inteligente de bases de datos. El sistema debe ser completamente modular, seguro, con tipado estricto en TypeScript y desplegable localmente con un solo comando (`docker compose up --build`).
 
 ---
 
-## 🛠️ STACK TECNOLÓGICO DEFINITIVO (NO NEGOCIABLE)
+## STACK TECNOLÓGICO DEFINITIVO (NO NEGOCIABLE)
 
 ### Decisiones técnicas justificadas críticamente:
 
@@ -29,7 +29,7 @@ Actúa como un **Arquitecto de Software Principal de Nivel Élite** e **Ingenier
 
 ---
 
-## 📁 ESTRUCTURA COMPLETA DE DIRECTORIOS
+##  ESTRUCTURA COMPLETA DE DIRECTORIOS
 
 Genera EXACTAMENTE esta estructura. No omitas ningún archivo:
 
@@ -289,7 +289,7 @@ dataops-control-center/
 
 ---
 
-## 🗄️ ESQUEMA DE BASE DE DATOS COMPLETO
+##  ESQUEMA DE BASE DE DATOS COMPLETO
 
 Implementa EXACTAMENTE este DDL en `scripts/init-db.sql`:
 
@@ -510,7 +510,7 @@ FROM generate_series(1, 10000) i;
 
 ---
 
-## 🔐 MÓDULO 1: AUTENTICACIÓN Y SEGURIDAD
+##  MÓDULO 1: AUTENTICACIÓN Y SEGURIDAD
 
 ### `src/infrastructure/crypto/AES256Service.ts`
 

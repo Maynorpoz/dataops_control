@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Activity, Cpu, MemoryStick, HardDrive, Network, RefreshCw } from 'lucide-react';
+import { Activity, Cpu, MemoryStick, HardDrive, Network } from 'lucide-react';
 import { metricsService } from '../services/metricsService';
 import { connectionsService } from '../services/connectionsService';
 import { Connection, DbMetric } from '../types';
@@ -40,7 +40,7 @@ export function MetricsPage() {
         </h1>
         <select
           value={selected || ''}
-          onChange={(e) => setSelected(parseInt(e.target.value))}
+          onChange={(e) => { const v = parseInt(e.target.value); if (!isNaN(v)) setSelected(v); }}
           className="bg-bg-elevated border border-bg-border rounded-lg px-3 py-1.5 text-sm text-text-primary font-body focus:outline-none focus:border-accent-cyan/60"
         >
           {connections.map((c) => <option key={c.id} value={c.id}>{c.nombre}</option>)}
