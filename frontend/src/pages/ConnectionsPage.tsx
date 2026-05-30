@@ -111,7 +111,7 @@ export function ConnectionsPage() {
         showToast(`${connName} — conectada exitosamente en ${res.data.latencyMs}ms`, 'success');
       } else {
         setActiveId(null);
-        const reason = res.data.error ? `: ${res.data.error}` : '. Verifica los datos de acceso';
+        const reason = (res.data as any).error ? `: ${(res.data as any).error}` : '. Verifica los datos de acceso';
         showToast(`${connName} — conexión fallida${reason}`, 'error');
       }
       load();
